@@ -89,7 +89,7 @@ export default function Dashboard() {
                 <div>
                   <h2 className="font-serif text-3xl tracking-[-0.03em] text-[#102b3a]">Online Enrollment</h2>
                   <p className="mt-3 max-w-md text-sm leading-6 text-[#65747a]">{admissionApproved ? "Your admission is approved. You may continue to enrollment when the enrollment window opens." : "Online enrollment unlocks automatically after your admission application is approved."}</p>
-                  <Button disabled={!admissionApproved} onClick={() => toast("Enrollment will be available in the next phase.")} variant={admissionApproved ? "default" : "outline"} className={`mt-6 gap-2 rounded-xl ${admissionApproved ? "bg-[#102b3a] text-white hover:bg-[#1d4558]" : "border-[#d5ded8] text-[#899493]"}`}>
+                  <Button disabled={!admissionApproved} onClick={() => admissionApproved && navigate("/enrollment")} variant={admissionApproved ? "default" : "outline"} className={`mt-6 gap-2 rounded-xl ${admissionApproved ? "bg-[#102b3a] text-white hover:bg-[#1d4558]" : "border-[#d5ded8] text-[#899493]"}`}>
                     {admissionApproved ? <ArrowRight className="size-4" /> : <LockKeyhole className="size-4" />}
                     {admissionApproved ? "Continue to enrollment" : "Locked until approval"}
                   </Button>

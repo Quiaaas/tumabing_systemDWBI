@@ -5,7 +5,7 @@ import { clearApplicantSession, createApplicantSession, hashPassword, readApplic
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
-import { createAdmissionApplication, getApplicantByEmail, getCampuses, getLatestAdmissionStatus, getPrograms, insertAdmissionDocuments, insertApplicant, updateApplicantProfile, uploadAdmissionDocument } from "./supabase";
+import { createAdmissionApplication, createEmergencyContact, createEnrollment, createScholarship, getApplicantByEmail, getCampuses, getCourseSubjectsForProgram, getLatestAdmissionStatus, getLatestApprovedAdmission, getPrograms, insertAdmissionDocuments, insertEnrollmentSubjects, insertApplicant, insertMedicalDocuments, updateApplicantProfile, uploadAdmissionDocument, uploadMedicalDocument } from "./supabase";
 
 const credentialsInput = z.object({
   email: z.string().trim().email("Enter a valid email address").max(320),
@@ -61,6 +61,30 @@ const requiredDocumentsByType: Record<z.infer<typeof applicationType>, string[]>
   Transferee: ["Transcript of Records", "Honorable Dismissal/Transfer Credential", "Good Moral Certificate", "PSA Birth Certificate", "2x2 Photo"],
   Ladderized: ["Certificate/Diploma from previous ladder level", "Transcript of Records", "Good Moral Certificate", "PSA Birth Certificate", "2x2 Photo"],
 };
+
+const enrollmentSubmitInput = z.object({
+  previousSchool: z.string().trim().min(1).max(240),
+  insuranceRefNumber: z.string().trim().max(160),
+  emergencyContact: z.object({
+    fullName: z.string().trim().min(1).max(160),
+    relationship: z.string().trim().min(1).max(80),
+    mobile: z.string().trim().min(7).max(32),
+    email: z.string().trim().email().max(320),
+  }),
+  scholarship: z.object({
+    scholarshipType: z.string().trim().min(1).max(120),
+    scholarshipName: z.string().trim().min(1).max(200),
+    grantingBody: z.string().trim().min(1).max(200),
+  }).nullable(),
+  medicalDocuments: z.array(z.object({
+    docType: z.string().trim().min(1).max(160),
+    fileName: z.string().trim().min(1).max(240),
+    fileSizeBytes: z.number().int().positive().max(8 * 1024 * 1024),
+    contentType: z.string().trim().max(120),
+    contentBase64: z.string().min(1).max(12_000_000),
+  })).max(5),
+  subjectCodes: z.array(z.string().trim().min(1).max(64)).min(1).max(30),
+});
 
 function publicApplicant(applicant: {
   applicant_id: number;
@@ -220,6 +244,68 @@ export const appRouter = router({
         if (error instanceof TRPCError) throw error;
         console.error("[AdmissionApplication] Submission failed:", error);
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "We could not submit your application. Please try again." });
+      }
+    }),
+  }),
+
+  enrollment: router({
+    options: publicProcedure.query(async ({ ctx }) => {
+      const session = await readApplicantSession(ctx.req);
+      if (!session) throw new TRPCError({ code: "UNAUTHORIZED", message: "Please sign in to continue." });
+      const approvedAdmission = await getLatestApprovedAdmission(session.applicantId);
+      if (!approvedAdmission) throw new TRPCError({ code: "FORBIDDEN", message: "Online enrollment is available only after admission approval." });
+      return {
+        admissionId: approvedAdmission.admission_id,
+        programId: approvedAdmission.program_id,
+        subjects: await getCourseSubjectsForProgram(approvedAdmission.program_id),
+      };
+    }),
+
+    submit: publicProcedure.input(enrollmentSubmitInput).mutation(async ({ input, ctx }) => {
+      const session = await readApplicantSession(ctx.req);
+      if (!session) throw new TRPCError({ code: "UNAUTHORIZED", message: "Please sign in to continue." });
+      const approvedAdmission = await getLatestApprovedAdmission(session.applicantId);
+      if (!approvedAdmission) throw new TRPCError({ code: "FORBIDDEN", message: "Online enrollment is available only after admission approval." });
+
+      try {
+        const enrollmentRefCode = `ENR-${new Date().getFullYear()}-${crypto.randomUUID().replaceAll("-", "").slice(0, 10).toUpperCase()}`;
+        const enrollment = await createEnrollment({
+          applicantId: session.applicantId,
+          admissionId: approvedAdmission.admission_id,
+          campusId: approvedAdmission.campus_id,
+          programId: approvedAdmission.program_id,
+          previousSchool: input.previousSchool || approvedAdmission.previous_school || "",
+          enrollmentRefCode,
+          insuranceRefNumber: input.insuranceRefNumber,
+        });
+        if (!enrollment) throw new Error("Enrollment was not returned after submission");
+
+        await createEmergencyContact({ enrollmentId: enrollment.enrollment_id, ...input.emergencyContact });
+        if (input.scholarship) await createScholarship({ enrollmentId: enrollment.enrollment_id, ...input.scholarship });
+
+        const medicalDocuments = await Promise.all(input.medicalDocuments.map(async document => ({
+          ...document,
+          filePath: await uploadMedicalDocument({
+            enrollmentId: enrollment.enrollment_id,
+            fileName: document.fileName,
+            contentType: document.contentType,
+            contentBase64: document.contentBase64,
+          }),
+        })));
+        await insertMedicalDocuments(medicalDocuments.map(document => ({
+          enrollmentId: enrollment.enrollment_id,
+          docType: document.docType,
+          fileName: document.fileName,
+          fileSizeBytes: document.fileSizeBytes,
+          filePath: document.filePath,
+        })));
+        await insertEnrollmentSubjects(enrollment.enrollment_id, input.subjectCodes);
+
+        return { enrollmentId: enrollment.enrollment_id, enrollmentRefCode, paymentStatus: "Unpaid" as const };
+      } catch (error) {
+        if (error instanceof TRPCError) throw error;
+        console.error("[Enrollment] Submission failed:", error);
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "We could not submit your enrollment. Please try again." });
       }
     }),
   }),
