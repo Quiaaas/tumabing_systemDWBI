@@ -1,30 +1,22 @@
 import type { Request, Response } from "express";
-import { createApp } from "../../server/_core/app";
 
-let app: ReturnType<typeof createApp> | null = null;
-let initializationError: unknown = null;
+type ExpressHandler = (req: Request, res: Response) => unknown;
+let appPromise: Promise<ExpressHandler> | null = null;
 
-try {
-  app = createApp();
-} catch (error) {
-  initializationError = error;
-  console.error("[Vercel] API initialization failed:", error);
+function loadApp() {
+  appPromise ??= import("../../server/_core/app").then(({ createApp }) => createApp() as ExpressHandler);
+  return appPromise;
 }
 
-export default function handler(req: Request, res: Response) {
-  if (initializationError || !app) {
-    res.status(500).setHeader("Content-Type", "application/json");
-    res.end(JSON.stringify({ error: "API initialization failed." }));
-    return;
-  }
-
+export default async function handler(req: Request, res: Response) {
   try {
-    app(req, res);
+    const app = await loadApp();
+    await Promise.resolve(app(req, res));
   } catch (error) {
-    console.error("[Vercel] API invocation failed:", error);
+    console.error("[Vercel] tRPC function failed:", error);
     if (!res.headersSent) {
       res.status(500).setHeader("Content-Type", "application/json");
-      res.end(JSON.stringify({ error: "API invocation failed." }));
+      res.end(JSON.stringify({ error: error instanceof Error ? error.message : "API request failed." }));
     }
   }
 }
