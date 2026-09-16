@@ -23,7 +23,7 @@ export default function Login() {
   const [form, setForm] = useState({ email: "", password: "" });
   const [showRegistered, setShowRegistered] = useState(false);
   const login = trpc.applicantAuth.login.useMutation({
-    onSuccess: () => navigate("/"),
+    onSuccess: () => navigate("/dashboard"),
   });
 
   useEffect(() => {

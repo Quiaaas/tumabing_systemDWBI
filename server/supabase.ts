@@ -8,6 +8,8 @@ export type ApplicantRecord = {
   is_verified: boolean | null;
 };
 
+export type AdmissionStatus = "Pending" | "Approved" | "Rejected" | "Waitlisted";
+
 type SupabaseRequestOptions = RequestInit & {
   parseJson?: boolean;
 };
@@ -75,4 +77,19 @@ export async function insertApplicant(input: {
   });
 
   return applicants[0] ?? null;
+}
+
+export async function getLatestAdmissionStatus(applicantId: number) {
+  const query = new URLSearchParams({
+    select: "admission_id,status",
+    applicant_id: `eq.${applicantId}`,
+    order: "admission_id.desc",
+    limit: "1",
+  });
+
+  const applications = await supabaseRequest<Array<{ admission_id: number; status: AdmissionStatus | null }>>(
+    `ADMISSION_APPLICATION?${query.toString()}`,
+  );
+
+  return applications[0]?.status ?? null;
 }

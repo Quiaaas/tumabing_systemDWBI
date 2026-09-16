@@ -5,7 +5,7 @@ import { clearApplicantSession, createApplicantSession, hashPassword, readApplic
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
-import { getApplicantByEmail, insertApplicant } from "./supabase";
+import { getApplicantByEmail, getLatestAdmissionStatus, insertApplicant } from "./supabase";
 
 const credentialsInput = z.object({
   email: z.string().trim().email("Enter a valid email address").max(320),
@@ -95,7 +95,10 @@ export const appRouter = router({
         return null;
       }
 
-      return publicApplicant(applicant);
+      return {
+        ...publicApplicant(applicant),
+        currentAdmissionStatus: await getLatestAdmissionStatus(applicant.applicant_id),
+      };
     }),
 
     logout: publicProcedure.mutation(({ ctx }) => {
