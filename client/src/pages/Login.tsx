@@ -46,7 +46,7 @@ export default function Login() {
       description="Sign in to continue your admission journey with the details you registered."
       alternate={
         <span>
-          New applicant? <Link href="/register" className="font-semibold text-[#102b3a] underline decoration-[#f0c36b] decoration-2 underline-offset-4">Create an account</Link>
+          New applicant? <Link href="/register" className="font-semibold text-[#07563f] underline decoration-[#f2d313] decoration-2 underline-offset-4">Create an account</Link>
         </span>
       }
     >
@@ -76,7 +76,7 @@ export default function Login() {
           <Input id="login-password" name="password" type="password" autoComplete="current-password" placeholder="Enter your password" value={form.password} onChange={update("password")} required minLength={8} maxLength={128} className="h-12 rounded-xl border-[#d5ded8] bg-white px-4 shadow-none" />
         </div>
 
-        <Button type="submit" disabled={login.isPending} className="h-12 w-full rounded-xl bg-[#102b3a] text-sm font-semibold text-white shadow-[0_10px_24px_rgba(16,43,58,0.18)] hover:bg-[#1d4558]">
+        <Button type="submit" disabled={login.isPending} className="h-12 w-full rounded-xl bg-[#07563f] text-sm font-semibold text-white shadow-[0_10px_24px_rgba(16,43,58,0.18)] hover:bg-[#087f5b]">
           {login.isPending ? <Loader2 className="size-4 animate-spin" /> : <ArrowRight className="size-4" />}
           {login.isPending ? "Signing in…" : "Sign in"}
         </Button>

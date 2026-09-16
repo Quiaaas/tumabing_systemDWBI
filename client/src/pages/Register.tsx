@@ -41,7 +41,7 @@ export default function Register() {
       description="Register with the contact details you will use throughout your admission journey."
       alternate={
         <span>
-          Already have an account? <Link href="/login" className="font-semibold text-[#102b3a] underline decoration-[#f0c36b] decoration-2 underline-offset-4">Sign in</Link>
+          Already have an account? <Link href="/login" className="font-semibold text-[#07563f] underline decoration-[#f2d313] decoration-2 underline-offset-4">Sign in</Link>
         </span>
       }
     >
@@ -70,11 +70,11 @@ export default function Register() {
           <Input id="register-password" name="password" type="password" autoComplete="new-password" placeholder="Create a strong password" value={form.password} onChange={update("password")} required minLength={8} maxLength={128} className="h-12 rounded-xl border-[#d5ded8] bg-white px-4 shadow-none" />
         </div>
 
-        <Button type="submit" disabled={register.isPending} className="h-12 w-full rounded-xl bg-[#102b3a] text-sm font-semibold text-white shadow-[0_10px_24px_rgba(16,43,58,0.18)] hover:bg-[#1d4558]">
+        <Button type="submit" disabled={register.isPending} className="h-12 w-full rounded-xl bg-[#087f5b] text-sm font-semibold text-white shadow-[0_10px_24px_rgba(8,127,91,0.18)] hover:bg-[#07563f]">
           {register.isPending ? <Loader2 className="size-4 animate-spin" /> : <ArrowRight className="size-4" />}
           {register.isPending ? "Creating account…" : "Create applicant account"}
         </Button>
-        <p className="text-center text-xs leading-5 text-[#7b8889]">By continuing, you are creating an applicant profile for the Student Admission & Enrollment System.</p>
+        <p className="text-center text-xs leading-5 text-[#7b8889]">By continuing, you are creating an applicant profile for Carlos Hilado Memorial State University.</p>
       </form>
     </AuthLayout>
   );

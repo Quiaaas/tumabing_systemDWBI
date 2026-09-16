@@ -1,10 +1,12 @@
 import { useEffect } from "react";
-import { ArrowRight, Bell, CalendarDays, CheckCircle2, Clock3, FileText, Headphones, LockKeyhole, LogOut, Megaphone, ShieldCheck } from "lucide-react";
+import { ArrowRight, Bell, CalendarDays, CheckCircle2, Clock3, FileText, Headphones, LockKeyhole, LogOut, Megaphone } from "lucide-react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
 import { DASHBOARD_CONFIG } from "@/config/dashboard";
+import BrandMark from "@/components/BrandMark";
+import { CHMSU_BRAND } from "@/config/brand";
 
 const statusStyles = {
   Pending: "border-[#e5c98d] bg-[#fff8e8] text-[#8d6418]",
@@ -36,17 +38,11 @@ export default function Dashboard() {
   const firstName = applicant.data.email?.split("@")[0] ?? "Applicant";
 
   return (
-    <main className="min-h-screen bg-[#f6f7f2] text-[#15232d]">
+    <main className="min-h-screen bg-[#f7fbf8] text-[#15232d]">
       <div className="mx-auto max-w-[1440px] px-5 py-6 sm:px-8 lg:px-12">
         <header className="flex items-center justify-between gap-4 border-b border-[#dce2dc] pb-6">
-          <div className="flex items-center gap-3">
-            <span className="grid size-10 place-items-center rounded-full bg-[#102b3a] text-[#f0c36b]"><ShieldCheck className="size-5" /></span>
-            <div>
-              <p className="text-sm font-bold tracking-tight text-[#102b3a]">Student Admissions</p>
-              <p className="text-xs uppercase tracking-[0.18em] text-[#7b8889]">Applicant portal</p>
-            </div>
-          </div>
-          <Button variant="ghost" onClick={() => logout.mutate()} disabled={logout.isPending} className="gap-2 text-[#65747a] hover:bg-white hover:text-[#102b3a]">
+          <BrandMark />
+          <Button variant="ghost" onClick={() => logout.mutate()} disabled={logout.isPending} className="gap-2 text-[#65747a] hover:bg-white hover:text-[#07563f]">
             <LogOut className="size-4" />
             {logout.isPending ? "Signing out…" : "Sign out"}
           </Button>
@@ -55,25 +51,25 @@ export default function Dashboard() {
         <section className="py-10 lg:py-14">
           <div className="flex flex-col justify-between gap-5 md:flex-row md:items-end">
             <div>
-              <p className="mb-3 text-xs font-bold uppercase tracking-[0.22em] text-[#a26b18]">Applicant dashboard</p>
-              <h1 className="font-serif text-4xl leading-tight tracking-[-0.04em] text-[#102b3a] sm:text-5xl">Good morning, {firstName}.</h1>
+              <p className="mb-3 text-xs font-bold uppercase tracking-[0.22em] text-[#087f5b]">{CHMSU_BRAND.tagline}</p>
+              <h1 className="font-serif text-4xl leading-tight tracking-[-0.04em] text-[#07563f] sm:text-5xl">Good morning, {firstName}.</h1>
               <p className="mt-4 max-w-xl text-sm leading-6 text-[#65747a]">Everything you need for your admission journey, in one clear view.</p>
             </div>
-            <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.16em] text-[#7b8889]"><Bell className="size-4 text-[#a26b18]" /> Keep your details close</div>
+            <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.16em] text-[#7b8889]"><Bell className="size-4 text-[#087f5b]" /> Keep your details close</div>
           </div>
 
           <div className="mt-9 grid gap-5 lg:grid-cols-2">
-            <article className="relative overflow-hidden rounded-2xl bg-[#102b3a] p-7 text-white shadow-[0_18px_40px_rgba(16,43,58,0.13)] sm:p-8">
-              <div className="absolute -right-16 -top-20 size-56 rounded-full border border-[#7eb7a8]/20" />
+            <article className="relative overflow-hidden rounded-2xl bg-[#07563f] p-7 text-white shadow-[0_18px_40px_rgba(16,43,58,0.13)] sm:p-8">
+              <div className="absolute -right-16 -top-20 size-56 rounded-full border border-[#75c9a7]/20" />
               <div className="relative z-10 flex h-full flex-col justify-between gap-12">
                 <div className="flex items-start justify-between gap-4">
-                  <div className="grid size-12 place-items-center rounded-xl bg-[#f0c36b] text-[#102b3a]"><FileText className="size-6" /></div>
+                  <div className="grid size-12 place-items-center rounded-xl bg-[#f2d313] text-[#07563f]"><FileText className="size-6" /></div>
                   <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${statusStyles[status]}`}>{status}</span>
                 </div>
                 <div>
                   <h2 className="font-serif text-3xl tracking-[-0.03em]">Admission Application</h2>
-                  <p className="mt-3 max-w-md text-sm leading-6 text-[#c7d5d3]">{status === "Not started" ? "Begin your application when you are ready. Your progress will be saved to your applicant profile." : "Your latest admission application status is shown above. Check back here for the next update."}</p>
-                  <Button onClick={() => navigate("/admission-application")} className="mt-6 gap-2 rounded-xl bg-[#f0c36b] text-[#102b3a] hover:bg-[#f6d58f]"><ArrowRight className="size-4" /> Start Application</Button>
+                  <p className="mt-3 max-w-md text-sm leading-6 text-[#d6eee3]">{status === "Not started" ? "Begin your application when you are ready. Your progress will be saved to your applicant profile." : "Your latest admission application status is shown above. Check back here for the next update."}</p>
+                  <Button onClick={() => navigate("/admission-application")} className="mt-6 gap-2 rounded-xl bg-[#f2d313] text-[#07563f] hover:bg-[#f7df5b]"><ArrowRight className="size-4" /> Start Application</Button>
                 </div>
               </div>
             </article>
@@ -87,9 +83,9 @@ export default function Dashboard() {
                   <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${admissionApproved ? statusStyles.Approved : "border-[#d5ded8] bg-[#f5f7f4] text-[#617077]"}`}>{admissionApproved ? "Available" : "Locked"}</span>
                 </div>
                 <div>
-                  <h2 className="font-serif text-3xl tracking-[-0.03em] text-[#102b3a]">Online Enrollment</h2>
+                  <h2 className="font-serif text-3xl tracking-[-0.03em] text-[#07563f]">Online Enrollment</h2>
                   <p className="mt-3 max-w-md text-sm leading-6 text-[#65747a]">{admissionApproved ? "Your admission is approved. You may continue to enrollment when the enrollment window opens." : "Online enrollment unlocks automatically after your admission application is approved."}</p>
-                  <Button disabled={!admissionApproved} onClick={() => admissionApproved && navigate("/enrollment")} variant={admissionApproved ? "default" : "outline"} className={`mt-6 gap-2 rounded-xl ${admissionApproved ? "bg-[#102b3a] text-white hover:bg-[#1d4558]" : "border-[#d5ded8] text-[#899493]"}`}>
+                  <Button disabled={!admissionApproved} onClick={() => admissionApproved && navigate("/enrollment")} variant={admissionApproved ? "default" : "outline"} className={`mt-6 gap-2 rounded-xl ${admissionApproved ? "bg-[#07563f] text-white hover:bg-[#1d4558]" : "border-[#d5ded8] text-[#899493]"}`}>
                     {admissionApproved ? <ArrowRight className="size-4" /> : <LockKeyhole className="size-4" />}
                     {admissionApproved ? "Continue to enrollment" : "Locked until approval"}
                   </Button>
@@ -108,16 +104,16 @@ export default function Dashboard() {
         <section className="py-10 lg:py-12">
           <div className="flex items-end justify-between gap-4">
             <div>
-              <p className="mb-3 text-xs font-bold uppercase tracking-[0.22em] text-[#a26b18]">Stay in the loop</p>
-              <h2 className="font-serif text-3xl tracking-[-0.03em] text-[#102b3a]">Announcements</h2>
+              <p className="mb-3 text-xs font-bold uppercase tracking-[0.22em] text-[#087f5b]">Stay in the loop</p>
+              <h2 className="font-serif text-3xl tracking-[-0.03em] text-[#07563f]">Announcements</h2>
             </div>
-            <Megaphone className="size-5 text-[#a26b18]" />
+            <Megaphone className="size-5 text-[#087f5b]" />
           </div>
           <div className="mt-6 grid gap-4 lg:grid-cols-3">
             {DASHBOARD_CONFIG.announcements.map(announcement => (
               <article className="rounded-2xl border border-[#dce2dc] bg-white p-6" key={announcement.title}>
-                <div className="flex items-center justify-between gap-3 text-[11px] font-bold uppercase tracking-[0.16em] text-[#a26b18]"><span>{announcement.tag}</span><span className="text-[#96a19f]">{announcement.date}</span></div>
-                <h3 className="mt-5 text-base font-semibold leading-6 text-[#102b3a]">{announcement.title}</h3>
+                <div className="flex items-center justify-between gap-3 text-[11px] font-bold uppercase tracking-[0.16em] text-[#087f5b]"><span>{announcement.tag}</span><span className="text-[#96a19f]">{announcement.date}</span></div>
+                <h3 className="mt-5 text-base font-semibold leading-6 text-[#07563f]">{announcement.title}</h3>
                 <p className="mt-3 text-sm leading-6 text-[#65747a]">{announcement.body}</p>
               </article>
             ))}
@@ -131,13 +127,13 @@ export default function Dashboard() {
 function InfoCard({ icon, label, value, detail }: { icon: React.ReactNode; label: string; value: string; detail: string }) {
   return (
     <article className="rounded-2xl border border-[#dce2dc] bg-white p-5">
-      <div className="flex items-center gap-3 text-[#a26b18]"><span className="grid size-9 place-items-center rounded-lg bg-[#fff8e8]">{icon}</span><span className="text-xs font-bold uppercase tracking-[0.14em] text-[#718087]">{label}</span></div>
-      <p className="mt-5 text-lg font-semibold tracking-tight text-[#102b3a]">{value}</p>
+      <div className="flex items-center gap-3 text-[#087f5b]"><span className="grid size-9 place-items-center rounded-lg bg-[#fff8e8]">{icon}</span><span className="text-xs font-bold uppercase tracking-[0.14em] text-[#718087]">{label}</span></div>
+      <p className="mt-5 text-lg font-semibold tracking-tight text-[#07563f]">{value}</p>
       <p className="mt-2 text-xs leading-5 text-[#7b8889]">{detail}</p>
     </article>
   );
 }
 
 function DashboardSkeleton() {
-  return <main className="min-h-screen bg-[#f6f7f2] p-6"><div className="mx-auto max-w-[1280px] animate-pulse space-y-8"><div className="h-12 rounded-xl bg-[#e4e9e3]" /><div className="h-36 rounded-2xl bg-[#e4e9e3]" /><div className="grid gap-5 lg:grid-cols-2"><div className="h-72 rounded-2xl bg-[#dbe5e0]" /><div className="h-72 rounded-2xl bg-[#e4e9e3]" /></div></div></main>;
+  return <main className="min-h-screen bg-[#f7fbf8] p-6"><div className="mx-auto max-w-[1280px] animate-pulse space-y-8"><div className="h-12 rounded-xl bg-[#e4e9e3]" /><div className="h-36 rounded-2xl bg-[#e4e9e3]" /><div className="grid gap-5 lg:grid-cols-2"><div className="h-72 rounded-2xl bg-[#dbe5e0]" /><div className="h-72 rounded-2xl bg-[#e4e9e3]" /></div></div></main>;
 }
