@@ -5,7 +5,7 @@ import { clearApplicantSession, createApplicantSession, hashPassword, readApplic
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
-import { createAdmissionApplication, createEmergencyContact, createEnrollment, createScholarship, getApplicantByEmail, getCampuses, getCourseSubjectsForProgram, getLatestAdmissionStatus, getLatestApprovedAdmission, getPrograms, getProgramsForCampus, insertAdmissionDocuments, insertEnrollmentSubjects, insertApplicant, insertMedicalDocuments, updateApplicantProfile, uploadAdmissionDocument, uploadMedicalDocument } from "./supabase";
+import { createAdmissionApplication, createEmergencyContact, createEnrollment, createScholarship, ensureDocumentBucket, getApplicantByEmail, getCampuses, getCourseSubjectsForProgram, getLatestAdmissionStatus, getLatestApprovedAdmission, getPrograms, getProgramsForCampus, insertAdmissionDocuments, insertEnrollmentSubjects, insertApplicant, insertMedicalDocuments, updateApplicantProfile, uploadAdmissionDocument, uploadMedicalDocument } from "./supabase";
 
 const credentialsInput = z.object({
   email: z.string().trim().email("Enter a valid email address").max(320),
@@ -197,6 +197,7 @@ export const appRouter = router({
       }
 
       try {
+        await ensureDocumentBucket();
         const email = input.email.toLowerCase();
         await updateApplicantProfile({ applicantId: session.applicantId, ...input, email });
         const application = await createAdmissionApplication({

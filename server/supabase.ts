@@ -220,7 +220,7 @@ export async function createAdmissionApplication(input: {
 
 const DOCUMENT_BUCKET = "admission-documents";
 
-async function ensureDocumentBucket() {
+export async function ensureDocumentBucket() {
   if (!ENV.supabaseUrl || !ENV.supabaseServerKey) throw new Error("Supabase server configuration is missing");
   const response = await fetch(`${ENV.supabaseUrl}/storage/v1/bucket`, {
     method: "POST",
@@ -231,9 +231,16 @@ async function ensureDocumentBucket() {
     },
     body: JSON.stringify({ id: DOCUMENT_BUCKET, name: DOCUMENT_BUCKET, public: false }),
   });
-  if (!response.ok && response.status !== 409) {
+  if (!response.ok) {
     const body = await response.text();
-    throw new Error(`Supabase storage bucket failed (${response.status}): ${body}`);
+    let details: { code?: string; error?: string } = {};
+    try {
+      details = JSON.parse(body) as typeof details;
+    } catch {
+      // Keep the raw response in the error below.
+    }
+    const bucketAlreadyExists = response.status === 409 || details.code === "BucketAlreadyExists" || details.error === "Duplicate";
+    if (!bucketAlreadyExists) throw new Error(`Supabase storage bucket failed (${response.status}): ${body}`);
   }
 }
 
