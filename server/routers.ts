@@ -5,7 +5,7 @@ import { clearApplicantSession, createApplicantSession, hashPassword, readApplic
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
-import { getApplicantByEmail, getLatestAdmissionStatus, insertApplicant } from "./supabase";
+import { createAdmissionApplication, getApplicantByEmail, getCampuses, getLatestAdmissionStatus, getPrograms, insertAdmissionDocuments, insertApplicant, updateApplicantProfile, uploadAdmissionDocument } from "./supabase";
 
 const credentialsInput = z.object({
   email: z.string().trim().email("Enter a valid email address").max(320),
@@ -15,6 +15,52 @@ const credentialsInput = z.object({
 const registerInput = credentialsInput.extend({
   mobile: z.string().trim().min(7, "Enter a valid mobile number").max(32),
 });
+
+const applicationType = z.enum(["Freshmen", "Transferee", "Ladderized"]);
+
+const admissionSubmitInput = z.object({
+  applicationType,
+  lrn: z.string().trim().min(1).max(64),
+  lastName: z.string().trim().min(1).max(120),
+  firstName: z.string().trim().min(1).max(120),
+  middleName: z.string().trim().max(120),
+  suffix: z.string().trim().max(32),
+  sex: z.string().trim().min(1).max(32),
+  civilStatus: z.string().trim().min(1).max(32),
+  birthDate: z.string().date(),
+  email: z.string().trim().email().max(320),
+  mobile: z.string().trim().min(7).max(32),
+  region: z.string().trim().min(1).max(120),
+  province: z.string().trim().min(1).max(120),
+  city: z.string().trim().min(1).max(120),
+  barangay: z.string().trim().min(1).max(120),
+  strand: z.string().trim().max(120),
+  prevSchool: z.string().trim().min(1).max(240),
+  prevSchoolAddress: z.string().trim().min(1).max(320),
+  schoolType: z.string().trim().min(1).max(64),
+  yearGraduated: z.coerce.number().int().min(1900).max(2100),
+  gwa: z.coerce.number().min(0).max(100),
+  honors: z.string().trim().max(240),
+  campusId: z.coerce.number().int().positive(),
+  programId: z.coerce.number().int().positive(),
+  examType: z.string().trim().min(1).max(120),
+  examDate: z.string().date(),
+  examTimeSlot: z.string().trim().min(1).max(120),
+  examVenue: z.string().trim().min(1).max(240),
+  documents: z.array(z.object({
+    docType: z.string().trim().min(1).max(160),
+    fileName: z.string().trim().min(1).max(240),
+    fileSizeBytes: z.number().int().positive().max(8 * 1024 * 1024),
+    contentType: z.string().trim().max(120),
+    contentBase64: z.string().min(1).max(12_000_000),
+  })).max(8),
+});
+
+const requiredDocumentsByType: Record<z.infer<typeof applicationType>, string[]> = {
+  Freshmen: ["Form 138/Report Card", "PSA Birth Certificate", "Good Moral Certificate", "2x2 Photo"],
+  Transferee: ["Transcript of Records", "Honorable Dismissal/Transfer Credential", "Good Moral Certificate", "PSA Birth Certificate", "2x2 Photo"],
+  Ladderized: ["Certificate/Diploma from previous ladder level", "Transcript of Records", "Good Moral Certificate", "PSA Birth Certificate", "2x2 Photo"],
+};
 
 function publicApplicant(applicant: {
   applicant_id: number;
@@ -104,6 +150,77 @@ export const appRouter = router({
     logout: publicProcedure.mutation(({ ctx }) => {
       clearApplicantSession(ctx.res, ctx.req);
       return { success: true } as const;
+    }),
+  }),
+
+  admissionApplication: router({
+    options: publicProcedure.query(async () => ({
+      campuses: await getCampuses(),
+      programs: await getPrograms(),
+    })),
+
+    submit: publicProcedure.input(admissionSubmitInput).mutation(async ({ input, ctx }) => {
+      const session = await readApplicantSession(ctx.req);
+      if (!session) throw new TRPCError({ code: "UNAUTHORIZED", message: "Please sign in to submit an application." });
+
+      const requiredDocuments = requiredDocumentsByType[input.applicationType];
+      const submittedTypes = new Set(input.documents.map(document => document.docType));
+      const missingDocuments = requiredDocuments.filter(documentType => !submittedTypes.has(documentType));
+      if (missingDocuments.length > 0) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: `Please upload: ${missingDocuments.join(", ")}.` });
+      }
+
+      try {
+        const email = input.email.toLowerCase();
+        await updateApplicantProfile({ applicantId: session.applicantId, ...input, email });
+        const application = await createAdmissionApplication({
+          applicantId: session.applicantId,
+          campusId: input.campusId,
+          programId: input.programId,
+          applicationType: input.applicationType,
+          strand: input.strand,
+          prevSchool: input.prevSchool,
+          prevSchoolAddress: input.prevSchoolAddress,
+          schoolType: input.schoolType,
+          yearGraduated: input.yearGraduated,
+          gwa: input.gwa,
+          honors: input.honors,
+          examType: input.examType,
+          examDate: input.examDate,
+          examTimeSlot: input.examTimeSlot,
+          examVenue: input.examVenue,
+        });
+        if (!application) throw new Error("Admission application was not returned after submission");
+
+        const uploadedDocuments = await Promise.all(input.documents.map(async document => ({
+          ...document,
+          filePath: await uploadAdmissionDocument({
+            admissionId: application.admission_id,
+            fileName: document.fileName,
+            contentType: document.contentType,
+            contentBase64: document.contentBase64,
+          }),
+        })));
+
+        await insertAdmissionDocuments(uploadedDocuments.map(document => ({
+          admissionId: application.admission_id,
+          docType: document.docType,
+          fileName: document.fileName,
+          fileSizeBytes: document.fileSizeBytes,
+          filePath: document.filePath,
+        })));
+
+        setApplicantSession(ctx.res, ctx.req, await createApplicantSession({
+          applicantId: session.applicantId,
+          email,
+        }));
+
+        return { admissionId: application.admission_id, status: "Pending" as const };
+      } catch (error) {
+        if (error instanceof TRPCError) throw error;
+        console.error("[AdmissionApplication] Submission failed:", error);
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "We could not submit your application. Please try again." });
+      }
     }),
   }),
 });

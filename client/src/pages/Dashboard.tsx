@@ -73,7 +73,7 @@ export default function Dashboard() {
                 <div>
                   <h2 className="font-serif text-3xl tracking-[-0.03em]">Admission Application</h2>
                   <p className="mt-3 max-w-md text-sm leading-6 text-[#c7d5d3]">{status === "Not started" ? "Begin your application when you are ready. Your progress will be saved to your applicant profile." : "Your latest admission application status is shown above. Check back here for the next update."}</p>
-                  <Button onClick={() => toast("The admission form will be available in the next phase.")} className="mt-6 gap-2 rounded-xl bg-[#f0c36b] text-[#102b3a] hover:bg-[#f6d58f]"><ArrowRight className="size-4" /> Start Application</Button>
+                  <Button onClick={() => navigate("/admission-application")} className="mt-6 gap-2 rounded-xl bg-[#f0c36b] text-[#102b3a] hover:bg-[#f6d58f]"><ArrowRight className="size-4" /> Start Application</Button>
                 </div>
               </div>
             </article>
