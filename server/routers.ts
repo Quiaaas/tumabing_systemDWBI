@@ -5,7 +5,7 @@ import { clearApplicantSession, createApplicantSession, hashPassword, readApplic
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
-import { createAdmissionApplication, createEmergencyContact, createEnrollment, createScholarship, ensureDocumentBucket, getApplicantByEmail, getCampuses, getCourseSubjectsForProgram, getLatestAdmissionStatus, getLatestApprovedAdmission, getPrograms, getProgramsForCampus, insertAdmissionDocuments, insertEnrollmentSubjects, insertApplicant, insertMedicalDocuments, updateApplicantProfile, uploadAdmissionDocument, uploadMedicalDocument } from "./supabase";
+import { createAdmissionApplication, createEmergencyContact, createEnrollment, createScholarship, ensureDocumentBucket, getApplicantByEmail, getCampuses, getCourseSubjectsForProgram, getLatestAdmissionDetail, getLatestAdmissionStatus, getLatestApprovedAdmission, getPrograms, getProgramsForCampus, insertAdmissionDocuments, insertEnrollmentSubjects, insertApplicant, insertMedicalDocuments, updateApplicantProfile, uploadAdmissionDocument, uploadMedicalDocument } from "./supabase";
 
 const credentialsInput = z.object({
   email: z.string().trim().email("Enter a valid email address").max(320),
@@ -182,6 +182,12 @@ export const appRouter = router({
       campuses: await getCampuses(),
       programs: await getPrograms(),
     })),
+
+    status: publicProcedure.query(async ({ ctx }) => {
+      const session = await readApplicantSession(ctx.req);
+      if (!session) throw new TRPCError({ code: "UNAUTHORIZED", message: "Please sign in to view your application status." });
+      return getLatestAdmissionDetail(session.applicantId);
+    }),
 
     programsByCampus: publicProcedure.input(z.object({ campusId: z.number().int().positive() })).query(({ input }) => getProgramsForCampus(input.campusId)),
 

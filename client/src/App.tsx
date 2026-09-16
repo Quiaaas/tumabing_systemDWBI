@@ -9,6 +9,7 @@ import Dashboard from "./pages/Dashboard";
 import Enrollment from "./pages/Enrollment";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import SubmissionStatus from "./pages/SubmissionStatus";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -19,6 +20,7 @@ function Router() {
       <Route path={"/register"} component={Register} />
       <Route path={"/dashboard"} component={Dashboard} />
       <Route path={"/admission-application"} component={AdmissionApplication} />
+      <Route path={"/submission-status"} component={SubmissionStatus} />
       <Route path={"/enrollment"} component={Enrollment} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}

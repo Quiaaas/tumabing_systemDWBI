@@ -39,7 +39,7 @@ export default function AdmissionApplication() {
     onSuccess: () => {
       if (applicant.data?.applicantId) localStorage.removeItem(`${DRAFT_KEY_PREFIX}${applicant.data.applicantId}`);
       toast.success("Your admission application was submitted.");
-      navigate("/dashboard");
+      navigate("/submission-status");
     },
   });
 

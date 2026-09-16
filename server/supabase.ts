@@ -10,6 +10,26 @@ export type ApplicantRecord = {
 
 export type AdmissionStatus = "Pending" | "Approved" | "Rejected" | "Waitlisted";
 export type ApplicationType = "Freshmen" | "Transferee" | "Ladderized";
+export type AdmissionDocumentRecord = { doc_type: string; file_name: string | null; file_size_bytes: number | null; file_path: string | null };
+export type AdmissionDetail = {
+  admission_id: number;
+  status: AdmissionStatus | null;
+  application_type: ApplicationType | null;
+  strand: string | null;
+  prev_school: string | null;
+  prev_school_address: string | null;
+  school_type: string | null;
+  year_graduated: number | null;
+  gwa: number | null;
+  honors: string | null;
+  exam_type: string | null;
+  exam_date: string | null;
+  exam_time_slot: string | null;
+  exam_venue: string | null;
+  CAMPUS?: { campus_name: string | null } | null;
+  PROGRAM?: { program_name: string | null; college: string | null } | null;
+  documents: AdmissionDocumentRecord[];
+};
 
 export type CampusRecord = { campus_id: number; campus_name: string | null };
 export type ProgramRecord = { program_id: number; program_name: string | null; college: string | null };
@@ -98,6 +118,26 @@ export async function getLatestAdmissionStatus(applicantId: number) {
   );
 
   return applications[0]?.status ?? null;
+}
+
+export async function getLatestAdmissionDetail(applicantId: number): Promise<AdmissionDetail | null> {
+  const query = new URLSearchParams({
+    select: "admission_id,status,application_type,strand,prev_school,prev_school_address,school_type,year_graduated,gwa,honors,exam_type,exam_date,exam_time_slot,exam_venue,CAMPUS(campus_name),PROGRAM(program_name,college)",
+    applicant_id: `eq.${applicantId}`,
+    order: "admission_id.desc",
+    limit: "1",
+  });
+  const applications = await supabaseRequest<Array<Omit<AdmissionDetail, "documents">>>(`ADMISSION_APPLICATION?${query.toString()}`);
+  const application = applications[0];
+  if (!application) return null;
+
+  const documentsQuery = new URLSearchParams({
+    select: "doc_type,file_name,file_size_bytes,file_path",
+    admission_id: `eq.${application.admission_id}`,
+    order: "doc_type.asc",
+  });
+  const documents = await supabaseRequest<AdmissionDocumentRecord[]>(`ADMISSION_DOCUMENT?${documentsQuery.toString()}`);
+  return { ...application, documents };
 }
 
 export async function getCampuses() {
