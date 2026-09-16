@@ -22,4 +22,14 @@ describe("fetchTrpcResponse", () => {
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual([{ result: { data: { json: null } } }]);
   });
+
+  it("wraps a JSON object from a failed Function into a tRPC error batch", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ error: "Supabase configuration is missing." }), { status: 500 }));
+
+    const response = await fetchTrpcResponse("/api/trpc/applicantAuth.register");
+    const payload = await response.json();
+
+    expect(payload[0].error.json.message).toBe("Supabase configuration is missing.");
+    expect(payload[0].error.json.data.code).toBe("INTERNAL_SERVER_ERROR");
+  });
 });
