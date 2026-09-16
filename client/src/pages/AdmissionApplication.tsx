@@ -29,6 +29,10 @@ export default function AdmissionApplication() {
   const [draft, setDraft] = useState<ApplicationDraft>(EMPTY_APPLICATION_DRAFT);
   const [draftLoaded, setDraftLoaded] = useState(false);
   const [error, setError] = useState("");
+  const campusPrograms = trpc.admissionApplication.programsByCampus.useQuery(
+    { campusId: Number(draft.campusId) },
+    { enabled: Boolean(draft.campusId) },
+  );
   const submit = trpc.admissionApplication.submit.useMutation({
     onSuccess: () => {
       if (applicant.data?.applicantId) localStorage.removeItem(`${DRAFT_KEY_PREFIX}${applicant.data.applicantId}`);
@@ -105,13 +109,18 @@ export default function AdmissionApplication() {
     return true;
   };
 
+  const scrollToTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
   const next = () => {
-    if (validateStep(step)) setStep(current => Math.min(5, current + 1));
+    if (validateStep(step)) {
+      setStep(current => Math.min(5, current + 1));
+      scrollToTop();
+    }
   };
 
   const previous = () => {
     setError("");
     setStep(current => Math.max(1, current - 1));
+    scrollToTop();
   };
 
   const handleFile = async (documentType: string, event: ChangeEvent<HTMLInputElement>) => {
@@ -170,13 +179,13 @@ export default function AdmissionApplication() {
           </div>
 
           <nav aria-label="Application progress" className="mt-9 grid grid-cols-5 gap-1 rounded-2xl border border-[#dce2dc] bg-white p-2 sm:gap-2 sm:p-3">
-            {steps.map(item => <button className={`flex min-w-0 items-center gap-2 rounded-xl px-2 py-2 text-left text-xs font-semibold transition-colors sm:px-3 ${step === item.number ? "bg-[#102b3a] text-white" : step > item.number ? "bg-[#effaf5] text-[#28604f]" : "text-[#8b9798] hover:bg-[#f6f7f2]"}`} key={item.number} onClick={() => item.number < step && setStep(item.number)} type="button"><span className="grid size-6 shrink-0 place-items-center rounded-full border border-current text-[11px]">{step > item.number ? <Check className="size-3.5" /> : item.number}</span><span className="hidden truncate sm:inline">{item.label}</span></button>)}
+            {steps.map(item => <button className={`flex min-w-0 items-center gap-2 rounded-xl px-2 py-2 text-left text-xs font-semibold transition-colors sm:px-3 ${step === item.number ? "bg-[#102b3a] text-white" : step > item.number ? "bg-[#effaf5] text-[#28604f]" : "text-[#8b9798] hover:bg-[#f6f7f2]"}`} key={item.number} onClick={() => { if (item.number < step) { setStep(item.number); window.scrollTo({ top: 0, behavior: "smooth" }); } }} type="button"><span className="grid size-6 shrink-0 place-items-center rounded-full border border-current text-[11px]">{step > item.number ? <Check className="size-3.5" /> : item.number}</span><span className="hidden truncate sm:inline">{item.label}</span></button>)}
           </nav>
 
           <form onSubmit={submitApplication} className="mt-6">
             <div className="rounded-2xl border border-[#dce2dc] bg-white p-5 shadow-[0_12px_30px_rgba(21,35,45,0.04)] sm:p-8">
               {step === 1 && <StepOne draft={draft} updateDraft={updateDraft} />}
-              {step === 2 && <StepTwo draft={draft} updateDraft={updateDraft} campuses={options.data?.campuses ?? []} programs={options.data?.programs ?? []} />}
+              {step === 2 && <StepTwo draft={draft} updateDraft={updateDraft} campuses={options.data?.campuses ?? []} programs={campusPrograms.data ?? []} programsLoading={campusPrograms.isLoading} />}
               {step === 3 && <StepThree draft={draft} documentRules={documentRules} handleFile={handleFile} removeFile={removeFile} />}
               {step === 4 && <StepFour draft={draft} updateDraft={updateDraft} />}
               {step === 5 && <StepFive draft={draft} campuses={options.data?.campuses ?? []} programs={options.data?.programs ?? []} documentRules={documentRules} />}
@@ -259,12 +268,12 @@ function AddressSelect({ value, onChange, options, placeholder, disabled }: { va
   return <select className={selectClass} value={value} onChange={event => onChange(event.target.value)} disabled={disabled}><option value="">{placeholder}</option>{options.map(option => <option key={option.code} value={option.code}>{option.name}</option>)}</select>;
 }
 
-function StepTwo({ draft, updateDraft, campuses, programs }: { draft: ApplicationDraft; updateDraft: (patch: Partial<ApplicationDraft>) => void; campuses: Array<{ campus_id: number; campus_name: string | null }>; programs: Array<{ program_id: number; program_name: string | null; college: string | null }> }) {
+function StepTwo({ draft, updateDraft, campuses, programs, programsLoading }: { draft: ApplicationDraft; updateDraft: (patch: Partial<ApplicationDraft>) => void; campuses: Array<{ campus_id: number; campus_name: string | null }>; programs: Array<{ program_id: number; program_name: string | null; college: string | null }>; programsLoading: boolean }) {
   return <StepShell eyebrow="Step 2 of 5" title="Academic background" description="Share your previous school details and your preferred campus and program.">
     <div className="grid gap-5 md:grid-cols-2"><Field label="Strand / track"><Input value={draft.strand} onChange={event => updateDraft({ strand: event.target.value })} placeholder="e.g. STEM, HUMSS, ABM" /></Field><Field label="School type" required><Select value={draft.schoolType} onChange={value => updateDraft({ schoolType: value })} options={SCHOOL_TYPE_OPTIONS} placeholder="Select school type" /></Field><Field label="Previous school" required><Input value={draft.prevSchool} onChange={event => updateDraft({ prevSchool: event.target.value })} /></Field><Field label="Year graduated" required><Input type="number" min="1900" max="2100" value={draft.yearGraduated} onChange={event => updateDraft({ yearGraduated: event.target.value })} /></Field></div>
     <Field label="Previous school address" required><textarea className={textareaClass} rows={3} value={draft.prevSchoolAddress} onChange={event => updateDraft({ prevSchoolAddress: event.target.value })} /></Field>
     <div className="grid gap-5 md:grid-cols-2"><Field label="GWA" required><Input type="number" min="0" max="100" step="0.01" value={draft.gwa} onChange={event => updateDraft({ gwa: event.target.value })} placeholder="e.g. 90.50" /></Field><Field label="Honors"><Input value={draft.honors} onChange={event => updateDraft({ honors: event.target.value })} placeholder="Optional" /></Field></div>
-    <div className="border-t border-[#edf0eb] pt-6"><p className="mb-4 text-sm font-semibold text-[#102b3a]">Preferred placement</p><div className="grid gap-5 md:grid-cols-2"><Field label="Preferred campus" required><select className={selectClass} value={draft.campusId} onChange={event => updateDraft({ campusId: event.target.value })}><option value="">{campuses.length ? "Select campus" : "No campuses available"}</option>{campuses.map(campus => <option key={campus.campus_id} value={campus.campus_id}>{campus.campus_name}</option>)}</select></Field><Field label="Preferred program" required><select className={selectClass} value={draft.programId} onChange={event => updateDraft({ programId: event.target.value })}><option value="">{programs.length ? "Select program" : "No programs available"}</option>{programs.map(program => <option key={program.program_id} value={program.program_id}>{program.program_name}{program.college ? ` · ${program.college}` : ""}</option>)}</select></Field></div></div>
+    <div className="border-t border-[#edf0eb] pt-6"><p className="mb-4 text-sm font-semibold text-[#102b3a]">Preferred placement</p><div className="grid gap-5 md:grid-cols-2"><Field label="Preferred campus" required><select className={selectClass} value={draft.campusId} onChange={event => updateDraft({ campusId: event.target.value, programId: "" })}><option value="">{campuses.length ? "Select campus" : "No campuses available"}</option>{campuses.map(campus => <option key={campus.campus_id} value={campus.campus_id}>{campus.campus_name}</option>)}</select></Field><Field label="Preferred program" required><select className={selectClass} value={draft.programId} onChange={event => updateDraft({ programId: event.target.value })} disabled={!draft.campusId || programsLoading}><option value="">{!draft.campusId ? "Select a campus first" : programsLoading ? "Loading programs…" : programs.length ? "Select program" : "No programs offered at this campus"}</option>{programs.map(program => <option key={program.program_id} value={program.program_id}>{program.program_name}{program.college ? ` · ${program.college}` : ""}</option>)}</select></Field></div></div>
   </StepShell>;
 }
 

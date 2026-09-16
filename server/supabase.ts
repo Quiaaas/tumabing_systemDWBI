@@ -116,6 +116,18 @@ export async function getPrograms() {
   return supabaseRequest<ProgramRecord[]>(`PROGRAM?${query.toString()}`);
 }
 
+export async function getProgramsForCampus(campusId: number) {
+  const query = new URLSearchParams({
+    select: "program_id,program_name,college,PROGRAM_CAMPUS!inner(campus_id)",
+    "PROGRAM_CAMPUS.campus_id": `eq.${campusId}`,
+    order: "program_name.asc",
+  });
+  const programs = await supabaseRequest<Array<ProgramRecord & { PROGRAM_CAMPUS?: Array<{ campus_id: number }> }>>(
+    `PROGRAM?${query.toString()}`,
+  );
+  return programs.map(({ PROGRAM_CAMPUS: _links, ...program }) => program);
+}
+
 export async function updateApplicantProfile(input: {
   applicantId: number;
   lrn: string;

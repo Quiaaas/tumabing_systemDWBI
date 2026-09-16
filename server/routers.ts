@@ -5,7 +5,7 @@ import { clearApplicantSession, createApplicantSession, hashPassword, readApplic
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
-import { createAdmissionApplication, createEmergencyContact, createEnrollment, createScholarship, getApplicantByEmail, getCampuses, getCourseSubjectsForProgram, getLatestAdmissionStatus, getLatestApprovedAdmission, getPrograms, insertAdmissionDocuments, insertEnrollmentSubjects, insertApplicant, insertMedicalDocuments, updateApplicantProfile, uploadAdmissionDocument, uploadMedicalDocument } from "./supabase";
+import { createAdmissionApplication, createEmergencyContact, createEnrollment, createScholarship, getApplicantByEmail, getCampuses, getCourseSubjectsForProgram, getLatestAdmissionStatus, getLatestApprovedAdmission, getPrograms, getProgramsForCampus, insertAdmissionDocuments, insertEnrollmentSubjects, insertApplicant, insertMedicalDocuments, updateApplicantProfile, uploadAdmissionDocument, uploadMedicalDocument } from "./supabase";
 
 const credentialsInput = z.object({
   email: z.string().trim().email("Enter a valid email address").max(320),
@@ -182,6 +182,8 @@ export const appRouter = router({
       campuses: await getCampuses(),
       programs: await getPrograms(),
     })),
+
+    programsByCampus: publicProcedure.input(z.object({ campusId: z.number().int().positive() })).query(({ input }) => getProgramsForCampus(input.campusId)),
 
     submit: publicProcedure.input(admissionSubmitInput).mutation(async ({ input, ctx }) => {
       const session = await readApplicantSession(ctx.req);
