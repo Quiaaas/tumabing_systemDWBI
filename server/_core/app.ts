@@ -10,6 +10,9 @@ export function createApp() {
 
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
+  app.get(["/api/health", "/health"], (_req, res) => {
+    res.json({ ok: true, service: "student-admission-auth" });
+  });
   registerStorageProxy(app);
   registerOAuthRoutes(app);
 
@@ -20,6 +23,12 @@ export function createApp() {
       createContext,
     }),
   );
+
+  app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+    console.error("[Vercel] API request failed:", error);
+    if (res.headersSent) return;
+    res.status(500).json({ error: "The API request failed." });
+  });
 
   return app;
 }
