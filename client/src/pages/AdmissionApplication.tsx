@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { trpc } from "@/lib/trpc";
 import { APPLICATION_TYPES, CIVIL_STATUS_OPTIONS, EMPTY_APPLICATION_DRAFT, EXAM_TIME_OPTIONS, EXAM_TYPE_OPTIONS, EXAM_VENUE_OPTIONS, getDocumentRules, SCHOOL_TYPE_OPTIONS, SEX_OPTIONS, type ApplicationDraft } from "@/config/application";
+import { calculateAge, getBarangays, getCitiesMunicipalities, getProvinces, getRegions, type PsgcPlace } from "@/lib/psgc";
 
 const DRAFT_KEY_PREFIX = "student-admission-application-draft:";
 const MAX_LOCAL_FILE_SIZE = 2 * 1024 * 1024;
@@ -80,7 +81,7 @@ export default function AdmissionApplication() {
       1: [
         ["applicationType", "application type"], ["lrn", "LRN"], ["lastName", "last name"], ["firstName", "first name"],
         ["sex", "sex"], ["civilStatus", "civil status"], ["birthDate", "birth date"], ["email", "email"], ["mobile", "mobile number"],
-        ["region", "region"], ["province", "province"], ["city", "city"], ["barangay", "barangay"],
+        ["regionCode", "region"], ["provinceCode", "province"], ["cityCode", "city / municipality"], ["barangayCode", "barangay"],
       ],
       2: [["prevSchool", "previous school"], ["prevSchoolAddress", "school address"], ["schoolType", "school type"], ["yearGraduated", "year graduated"], ["gwa", "GWA"], ["campusId", "preferred campus"], ["programId", "preferred program"]],
       4: [["examType", "exam type"], ["examDate", "exam date"], ["examTimeSlot", "exam time slot"], ["examVenue", "exam venue"]],
@@ -200,9 +201,62 @@ function StepOne({ draft, updateDraft }: { draft: ApplicationDraft; updateDraft:
     <div className="grid gap-5 md:grid-cols-2"><Field label="Learner Reference Number (LRN)" required><Input value={draft.lrn} onChange={event => updateDraft({ lrn: event.target.value })} placeholder="Enter your LRN" /></Field><Field label="Email address" required><Input type="email" value={draft.email} onChange={event => updateDraft({ email: event.target.value })} placeholder="you@example.com" /></Field></div>
     <div className="grid gap-5 md:grid-cols-3"><Field label="Last name" required><Input value={draft.lastName} onChange={event => updateDraft({ lastName: event.target.value })} /></Field><Field label="First name" required><Input value={draft.firstName} onChange={event => updateDraft({ firstName: event.target.value })} /></Field><Field label="Middle name"><Input value={draft.middleName} onChange={event => updateDraft({ middleName: event.target.value })} /></Field></div>
     <div className="grid gap-5 md:grid-cols-3"><Field label="Suffix"><Input value={draft.suffix} onChange={event => updateDraft({ suffix: event.target.value })} placeholder="Jr., III, etc." /></Field><Field label="Sex" required><Select value={draft.sex} onChange={value => updateDraft({ sex: value })} options={SEX_OPTIONS} placeholder="Select sex" /></Field><Field label="Civil status" required><Select value={draft.civilStatus} onChange={value => updateDraft({ civilStatus: value })} options={CIVIL_STATUS_OPTIONS} placeholder="Select civil status" /></Field></div>
-    <Field label="Birth date" required><Input type="date" value={draft.birthDate} onChange={event => updateDraft({ birthDate: event.target.value })} /></Field>
-    <div className="border-t border-[#edf0eb] pt-6"><p className="mb-4 text-sm font-semibold text-[#102b3a]">Contact and address</p><div className="grid gap-5 md:grid-cols-2"><Field label="Mobile number" required><Input type="tel" value={draft.mobile} onChange={event => updateDraft({ mobile: event.target.value })} placeholder="09XX XXX XXXX" /></Field><Field label="Region" required><Input value={draft.region} onChange={event => updateDraft({ region: event.target.value })} /></Field><Field label="Province" required><Input value={draft.province} onChange={event => updateDraft({ province: event.target.value })} /></Field><Field label="City / Municipality" required><Input value={draft.city} onChange={event => updateDraft({ city: event.target.value })} /></Field><Field label="Barangay" required><Input value={draft.barangay} onChange={event => updateDraft({ barangay: event.target.value })} /></Field></div></div>
+    <div className="grid gap-5 md:grid-cols-2"><Field label="Birth date" required><Input type="date" max={new Date().toISOString().slice(0, 10)} value={draft.birthDate} onChange={event => updateDraft({ birthDate: event.target.value })} /></Field><div className="flex items-end"><div className="w-full rounded-xl border border-[#dce2dc] bg-[#fbfcf9] px-4 py-3"><p className="text-xs font-bold uppercase tracking-[0.14em] text-[#8b9798]">Age</p><p className="mt-1 text-sm font-semibold text-[#102b3a]">{calculateAge(draft.birthDate) === null ? "Calculated automatically" : `${calculateAge(draft.birthDate)} years old`}</p></div></div></div>
+    <div className="border-t border-[#edf0eb] pt-6"><p className="mb-1 text-sm font-semibold text-[#102b3a]">Contact and address</p><p className="mb-4 text-xs leading-5 text-[#7b8889]">Address options are sourced from the public PSGC dataset. Each list narrows after you select its parent.</p><div className="grid gap-5 md:grid-cols-2"><Field label="Mobile number" required><Input type="tel" value={draft.mobile} onChange={event => updateDraft({ mobile: event.target.value })} placeholder="09XX XXX XXXX" /></Field><PsgcAddress draft={draft} updateDraft={updateDraft} /></div></div>
   </StepShell>;
+}
+
+function PsgcAddress({ draft, updateDraft }: { draft: ApplicationDraft; updateDraft: (patch: Partial<ApplicationDraft>) => void }) {
+  const [regions, setRegions] = useState<PsgcPlace[]>([]);
+  const [provinces, setProvinces] = useState<PsgcPlace[]>([]);
+  const [cities, setCities] = useState<PsgcPlace[]>([]);
+  const [barangays, setBarangays] = useState<PsgcPlace[]>([]);
+  const [loading, setLoading] = useState("Loading regions…");
+  const [loadError, setLoadError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    getRegions().then(items => { if (active) { setRegions(items); setLoading(""); } }).catch(() => { if (active) { setLoadError("PSGC address data is unavailable. Please try again."); setLoading(""); } });
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    if (!draft.regionCode) { setProvinces([]); return; }
+    let active = true;
+    setLoading("Loading provinces…");
+    getProvinces(draft.regionCode).then(items => { if (active) { setProvinces(items); setLoading(""); } }).catch(() => { if (active) setLoadError("Province data could not be loaded."); });
+    return () => { active = false; };
+  }, [draft.regionCode]);
+
+  useEffect(() => {
+    if (!draft.provinceCode) { setCities([]); return; }
+    let active = true;
+    setLoading("Loading cities and municipalities…");
+    getCitiesMunicipalities(draft.provinceCode).then(items => { if (active) { setCities(items); setLoading(""); } }).catch(() => { if (active) setLoadError("City and municipality data could not be loaded."); });
+    return () => { active = false; };
+  }, [draft.provinceCode]);
+
+  useEffect(() => {
+    if (!draft.cityCode) { setBarangays([]); return; }
+    let active = true;
+    setLoading("Loading barangays…");
+    getBarangays(draft.cityCode).then(items => { if (active) { setBarangays(items); setLoading(""); } }).catch(() => { if (active) setLoadError("Barangay data could not be loaded."); });
+    return () => { active = false; };
+  }, [draft.cityCode]);
+
+  const selectAddress = (level: "region" | "province" | "city" | "barangay", code: string, items: PsgcPlace[]) => {
+    const place = items.find(item => item.code === code);
+    if (level === "region") updateDraft({ regionCode: code, region: place?.name ?? "", provinceCode: "", province: "", cityCode: "", city: "", barangayCode: "", barangay: "" });
+    if (level === "province") updateDraft({ provinceCode: code, province: place?.name ?? "", cityCode: "", city: "", barangayCode: "", barangay: "" });
+    if (level === "city") updateDraft({ cityCode: code, city: place?.name ?? "", barangayCode: "", barangay: "" });
+    if (level === "barangay") updateDraft({ barangayCode: code, barangay: place?.name ?? "" });
+  };
+
+  return <div className="col-span-full grid gap-5 md:grid-cols-2">{loadError && <p className="col-span-full rounded-xl border border-[#e7b2aa] bg-[#fff5f2] px-4 py-3 text-xs text-[#8e3b32]">{loadError}</p>}<Field label="Region" required><AddressSelect value={draft.regionCode} onChange={code => selectAddress("region", code, regions)} options={regions} placeholder={loading || "Select region"} disabled={!regions.length} /></Field><Field label="Province" required><AddressSelect value={draft.provinceCode} onChange={code => selectAddress("province", code, provinces)} options={provinces} placeholder={draft.regionCode ? "Select province" : "Select a region first"} disabled={!draft.regionCode || !provinces.length} /></Field><Field label="City / Municipality" required><AddressSelect value={draft.cityCode} onChange={code => selectAddress("city", code, cities)} options={cities} placeholder={draft.provinceCode ? "Select city / municipality" : "Select a province first"} disabled={!draft.provinceCode || !cities.length} /></Field><Field label="Barangay" required><AddressSelect value={draft.barangayCode} onChange={code => selectAddress("barangay", code, barangays)} options={barangays} placeholder={draft.cityCode ? "Select barangay" : "Select a city / municipality first"} disabled={!draft.cityCode || !barangays.length} /></Field></div>;
+}
+
+function AddressSelect({ value, onChange, options, placeholder, disabled }: { value: string; onChange: (value: string) => void; options: PsgcPlace[]; placeholder: string; disabled?: boolean }) {
+  return <select className={selectClass} value={value} onChange={event => onChange(event.target.value)} disabled={disabled}><option value="">{placeholder}</option>{options.map(option => <option key={option.code} value={option.code}>{option.name}</option>)}</select>;
 }
 
 function StepTwo({ draft, updateDraft, campuses, programs }: { draft: ApplicationDraft; updateDraft: (patch: Partial<ApplicationDraft>) => void; campuses: Array<{ campus_id: number; campus_name: string | null }>; programs: Array<{ program_id: number; program_name: string | null; college: string | null }> }) {
